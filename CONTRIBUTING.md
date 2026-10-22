@@ -83,8 +83,13 @@ Version lives in `pyproject.toml` and must match the tag.
    ```
 
 4. The `Release` workflow builds the sdist/wheel, verifies the tag matches
-   `pyproject.toml`, publishes to PyPI via **Trusted Publishing**, and opens
-   a GitHub Release carrying the changelog entry as its notes.
+   `pyproject.toml`, publishes to PyPI via **Trusted Publishing**, opens a
+   GitHub Release carrying the changelog entry as its notes, and repoints the
+   floating `vMAJOR` tag (what `uses: Gakpey/tmda@v1` resolves to).
+
+   The trigger is `v*.*.*`, so `v1` itself never re-enters the workflow. The
+   major tag is moved with `GITHUB_TOKEN`, which GitHub does not feed back
+   into workflow triggers.
 
 PyPI Trusted Publishing is a one-time setup: on pypi.org add a *pending
 publisher* for this repository (owner `Gakpey`, repo `tmda`, workflow

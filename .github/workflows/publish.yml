@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-    tags: ["v*"]
+    tags: ["v*.*.*"]        # exact releases only - never the floating vMAJOR tag
 
 permissions:
   contents: read
@@ -100,3 +100,23 @@ jobs:
             --verify-tag \
             --title "$VERSION" \
             --notes-file notes.md
+
+  move-major-tag:
+    name: move floating vMAJOR tag
+    needs: publish-pypi
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # Lets consumers write `uses: Gakpey/tmda@v1` and always get the latest
+      # patch. Pushed with GITHUB_TOKEN, so it does not re-trigger workflows.
+      - name: Repoint vMAJOR at this release
+        run: |
+          MAJOR="v$(echo "${GITHUB_REF_NAME#v}" | cut -d. -f1)"
+          git tag -f "$MAJOR" "$GITHUB_REF_NAME"
+          git push -f origin "$MAJOR"
+          echo "Moved **$MAJOR** -> $GITHUB_REF_NAME"
