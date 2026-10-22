@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: The .tmda specification
+    url: https://github.com/Gakpey/tmda/blob/main/SPEC.md
+    about: Check what the format already defines before opening an issue.
+  - name: Changelog
+    url: https://github.com/Gakpey/tmda/blob/main/CHANGELOG.md
+    about: What has shipped, and what is coming in the next release.

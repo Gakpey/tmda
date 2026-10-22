@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tmda"
+version = "1.0.0"
+description = "Task Markdown for Agents (.tmda) - task ledgers with derived progress and validated links to a detailed brief"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["task", "markdown", "agent", "cli", "todo", "progress", "checkbox"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Documentation",
+    "Topic :: Software Development :: Documentation",
+    "Topic :: Text Processing :: Markup",
+]
+
+[project.urls]
+Homepage = "https://github.com/Gakpey/tmda"
+Documentation = "https://github.com/Gakpey/tmda/blob/main/SPEC.md"
+Repository = "https://github.com/Gakpey/tmda"
+Issues = "https://github.com/Gakpey/tmda/issues"
+Changelog = "https://github.com/Gakpey/tmda/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+yaml = ["PyYAML>=5.4"]
+dev = [
+    "ruff>=0.5",
+    "build>=1.0",
+    "twine>=5",
+]
+
+[project.scripts]
+tmda = "tmda:main"
+
+[tool.setuptools]
+py-modules = ["tmda"]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]

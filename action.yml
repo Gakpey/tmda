@@ -1,0 +1,58 @@
+name: "tmda check"
+description: >-
+  Validate .tmda task ledgers - task ids, checkbox states, links into the
+  linked brief, and the derived progress block.
+author: "Joshua Gakpey"
+branding:
+  icon: check-circle
+  color: green
+
+inputs:
+  path:
+    description: >-
+      File or directory to check. Directories are searched recursively for
+      *.tmda (dot-directories are skipped).
+    default: "."
+  strict:
+    description: >-
+      Treat warnings as errors. Recommended: it catches missing progress
+      blocks and ledgers that contradict their own front matter.
+    default: "true"
+  version:
+    description: "tmda version to install (e.g. '1.0.0'), or 'latest'."
+    default: "latest"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Install tmda
+      shell: bash
+      env:
+        TMDA_VERSION: ${{ inputs.version }}
+      run: |
+        python -m pip install --quiet --upgrade pip
+        if [ "$TMDA_VERSION" = "latest" ]; then
+          python -m pip install --quiet --upgrade tmda
+        else
+          python -m pip install --quiet "tmda==$TMDA_VERSION"
+        fi
+        tmda --version
+
+    - name: tmda check --strict
+      if: inputs.strict == 'true'
+      shell: bash
+      env:
+        TMDA_PATH: ${{ inputs.path }}
+      run: tmda check --strict "$TMDA_PATH"
+
+    - name: tmda check
+      if: inputs.strict != 'true'
+      shell: bash
+      env:
+        TMDA_PATH: ${{ inputs.path }}
+      run: tmda check "$TMDA_PATH"

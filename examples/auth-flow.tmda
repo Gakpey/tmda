@@ -1,0 +1,45 @@
+---
+tmda: 1
+id: auth-flow
+title: Sign-in and session overhaul
+detail: ./auth-flow-brief.md
+status: active
+owner: joshua
+updated: 2026-10-22
+tags: [auth, security]
+---
+
+# Sign-in and session overhaul
+
+> **Brief:** [./auth-flow-brief.md](./auth-flow-brief.md) - what we are trying
+> to do and why. Read it before changing any checkbox below.
+
+<!-- tmda:progress:start -->
+**Progress** `█████████░░░░░░░░░░░` **6/14 pts (43%)** - 1 in progress - 1 blocked - 6 todo - 1 cancelled
+<!-- tmda:progress:end -->
+
+## 1. Research and design
+
+- [x] T-001 Audit the current login flow @owner=joshua @weight=2 @detail=./auth-flow-brief.md#what-we-want-to-do
+- [x] T-002 Choose an OAuth provider @owner=joshua @detail=./auth-flow-brief.md#oauth-provider
+- [ ] T-003 Write the session storage spec @owner=agent:planner @detail=./auth-flow-brief.md#session-storage
+  - [x] T-004 Compare cookie-only vs server-side sessions
+  - [ ] T-005 Pick the rotation interval
+
+## 2. Implementation
+
+- [ ] T-010 Scaffold the auth package
+  - [x] T-011 Add the provider SDK
+  - [~] T-012 Wire the callback route
+  - [ ] T-013 Map provider claims onto our user record
+- [!] T-014 Register the callback URL with the provider @blocked-by=T-015
+- [ ] T-015 Ask infra for the production redirect URI @owner=agent:scout @due=2026-10-28
+- [ ] T-016 Rate limit the token endpoint @detail=./auth-flow-brief.md#rate-limiting @weight=3
+  - [ ] T-017 Sliding window counter per IP
+  - [ ] T-018 Return 429 with Retry-After
+
+## 3. Verification
+
+- [x] T-020 Happy-path sign-in test
+- [-] T-021 Support legacy browsers @weight=1
+- [ ] T-022 Load test the callback route @owner=agent:tester

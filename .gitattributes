@@ -1,0 +1,11 @@
+# Normalise to LF in the repo - tmda writes LF and a mixed-EOL tree would
+# make progress-block diffs noisy on Windows contributors.
+* text=auto eol=lf
+
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.zip  binary

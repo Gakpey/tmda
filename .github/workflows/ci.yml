@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test · py${{ matrix.python-version }} · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        include:
+          - os: windows-latest
+            python-version: "3.12"
+          - os: macos-latest
+            python-version: "3.12"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install (editable, no extras - exercises the stdlib-only path)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Unit tests without PyYAML
+        run: python -m unittest discover -s tests -v
+
+      - name: Unit tests with PyYAML
+        run: |
+          python -m pip install PyYAML
+          python -m unittest discover -s tests -v
+
+      - name: Dogfood - validate the shipped examples strictly
+        run: tmda check --strict examples
+
+      - name: CLI smoke test
+        run: |
+          tmda --version
+          tmda init --help
+          tmda status --json examples
+
+  lint:
+    name: lint · ruff
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ruff
+        run: python -m pip install ruff
+
+      - name: ruff check
+        run: ruff check .
+
+  package:
+    name: build sdist + wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build
+        run: |
+          python -m pip install --upgrade pip build twine
+          python -m build
+          python -m twine check dist/*
+
+      - name: Install from the wheel and run it
+        run: |
+          python -m pip install dist/*.whl
+          tmda --version
+          tmda check --strict examples
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error

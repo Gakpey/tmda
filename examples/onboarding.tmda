@@ -1,0 +1,29 @@
+---
+tmda: 1
+id: onboarding
+title: First-run onboarding
+detail: ./onboarding-brief.md
+status: active
+owner: agent:planner
+updated: 2026-10-22
+depends_on: [auth-flow]
+tags: [activation]
+---
+
+# First-run onboarding
+
+> **Brief:** [./onboarding-brief.md](./onboarding-brief.md) - what we are trying
+> to do and why. Read it before changing any checkbox below.
+
+<!-- tmda:progress:start -->
+**Progress** `██████████░░░░░░░░░░` **2/4 (50%)** - 2 todo - 1 cancelled
+<!-- tmda:progress:end -->
+
+## Checklist wiring
+
+- [ ] T-001 Derive checklist state from existing events @owner=agent:planner @detail=./onboarding-brief.md#welcome-checklist
+- [~] T-002 Define the four checklist items @owner=joshua
+  - [x] T-003 Invite a teammate
+  - [x] T-004 Create a first project
+  - [-] T-005 Read the overview
+- [ ] T-006 Dismiss the checklist permanently once complete @blocked-by=T-001

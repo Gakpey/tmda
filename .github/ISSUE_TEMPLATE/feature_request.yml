@@ -1,0 +1,59 @@
+name: Feature request
+description: Propose an addition to the CLI or the .tmda format
+title: "[feat] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The `.tmda` **format** is versioned: anything that changes what a
+        valid file looks like belongs to a future spec version and needs a
+        stronger case than a CLI flag does. See
+        [SPEC.md 16](https://github.com/Gakpey/tmda/blob/main/SPEC.md) for the
+        candidates already on the table.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of change is this?
+      options:
+        - CLI behaviour or a new flag
+        - JSON report shape
+        - Documentation / examples
+        - The .tmda format itself (spec version bump)
+        - Tooling (CI, packaging, the GitHub Action)
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: |
+        Describe the workflow that is awkward today. A concrete example -
+        "I keep losing track of which brief a task came from because..." -
+        is much more useful than a proposed solution.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like to happen?
+      description: If you have a syntax or interface in mind, show it here.
+      render: markdown
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Workarounds you have considered
+      description: Anything you do today to get around this.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and SPEC.md 16 for this idea
+          required: true
+        - label: If this changes the format, I understand it will not land in spec version 1

@@ -1,0 +1,14 @@
+# The sdist should be a complete, usable source tree - it carries the format
+# specification, the examples and the CI/Action definitions alongside code.
+include LICENSE
+include README.md
+include SPEC.md
+include CHANGELOG.md
+include CONTRIBUTING.md
+include action.yml
+
+recursive-include examples *.tmda *.md
+recursive-include tests *.py
+graft .github
+
+prune .venv
