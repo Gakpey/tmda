@@ -29,7 +29,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 SPEC_VERSION = 1
 BAR_WIDTH = 20
 

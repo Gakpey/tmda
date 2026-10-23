@@ -7,6 +7,7 @@ Run from the tmda/ directory:
 
 import io
 import json
+import re
 import sys
 import tempfile
 import unittest
@@ -838,6 +839,27 @@ class TestDiscover(TempCase):
         found = [str(p) for p in tmda.discover([str(self.root)])]
         self.assertEqual(len(found), 2)
         self.assertFalse(any(".hidden" in f for f in found))
+
+
+# --------------------------------------------------------------- versioning
+
+
+class TestVersion(unittest.TestCase):
+    def test_version_sources_agree(self):
+        """pyproject.toml (what PyPI shows) and tmda.__version__ (what
+        `tmda --version` shows) are written in two places; a release
+        following CONTRIBUTING bumps only the first, so pin them together."""
+        root = Path(__file__).resolve().parent.parent
+        text = (root / "pyproject.toml").read_text(encoding="utf-8")
+        found = re.search(r'^version = "([^"]+)"', text, re.M)
+        self.assertIsNotNone(found, "pyproject.toml declares no version")
+        self.assertEqual(found.group(1), tmda.__version__)
+
+        out = io.StringIO()
+        with self.assertRaises(SystemExit):
+            with redirect_stdout(out):
+                tmda.main(["--version"])
+        self.assertIn(f"tmda {tmda.__version__}", out.getvalue())
 
 
 if __name__ == "__main__":

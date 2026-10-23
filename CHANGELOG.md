@@ -11,6 +11,8 @@ removing or repurposing a documented key is a major release.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-23
+
 ### Added
 
 - `tmda status --totals-only` — project rollup with no per-file blocks, so
@@ -72,5 +74,6 @@ First release. Format spec version `1`.
   cancelled work and a cross-file `depends_on`.
 - **Tests** — 67 unit and CLI tests (`python3 -m unittest discover -s tests`).
 
-[Unreleased]: https://github.com/Gakpey/tmda/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/Gakpey/tmda/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/Gakpey/tmda/releases/tag/v1.1.0
 [1.0.0]: https://github.com/Gakpey/tmda/releases/tag/v1.0.0

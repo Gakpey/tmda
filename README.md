@@ -198,7 +198,7 @@ jobs:
         with:
           path: tasks/        # default "."
           strict: "true"      # default - warnings fail the build
-          version: latest     # or pin "1.0.0"
+          version: latest     # or pin "1.1.0"
 ```
 
 `strict` is on by default because that is where the value is: a stale progress

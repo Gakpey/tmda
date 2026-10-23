@@ -68,12 +68,17 @@ review than a combined refactor + feature.
 
 ## Releasing (maintainers)
 
-Version lives in `pyproject.toml` and must match the tag.
+The version lives in **two** places — `pyproject.toml` (what PyPI shows) and
+`__version__` in `tmda.py` (what `tmda --version` shows) — and both must match
+the tag. The `Release` workflow only verifies the tag against
+`pyproject.toml`, so the drift is caught by `tests/test_tmda.py` instead; keep
+them in step.
 
 1. Move `[Unreleased]` entries in `CHANGELOG.md` under a new
    `## [X.Y.Z] - YYYY-MM-DD` heading, and update the link references at the
    bottom.
-2. Set `version = "X.Y.Z"` in `pyproject.toml`.
+2. Set `version = "X.Y.Z"` in `pyproject.toml` **and** `__version__` in
+   `tmda.py`.
 3. Commit, then tag and push:
 
    ```console

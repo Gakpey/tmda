@@ -19,7 +19,7 @@ inputs:
       blocks and ledgers that contradict their own front matter.
     default: "true"
   version:
-    description: "tmda version to install (e.g. '1.0.0'), or 'latest'."
+    description: "tmda version to install (e.g. '1.1.0'), or 'latest'."
     default: "latest"
 
 runs:
