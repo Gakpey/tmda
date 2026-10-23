@@ -148,12 +148,35 @@ Step 2 is not optional — the ledger says *what*, the brief says *why*, and
 |---|---|
 | `tmda init NAME` | Scaffold a ledger and its brief stub |
 | `tmda check [PATH…]` | Validate syntax, ids, links and the progress block (`--strict`, `--json`) |
-| `tmda status [PATH…]` | Progress report per file, section and project (`--json`) |
+| `tmda status [PATH…]` | Progress report per file, section and project (`--json`, `--totals-only`, `--limit N`) |
 | `tmda sync [PATH…]` | Rewrite the progress block in place; idempotent |
-| `tmda list [PATH…]` | Flat task list with `--state`, `--open`, `--owner`, `--blocked`, `--id` |
+| `tmda list [PATH…]` | Flat task list with `--state`, `--open`, `--owner`, `--blocked`, `--id`, `--limit N` |
 | `tmda mark T-014 done` | Change a task's state by id and refresh progress |
 
 Exit codes: `0` ok · `1` validation errors · `2` usage error.
+
+**On a large repository, scope the path.** A bare `tmda status` returns every
+task in every ledger, which is tens of thousands of tokens on a monorepo. Ask a
+small question instead:
+
+```console
+$ tmda status --totals-only .        # project rollup only
+TOTAL  157 file(s)
+  progress `█████████░░░░░░░░░░░`  **2251/4879 pts (46%)**
+           1768 done - 317 in progress - 308 blocked - 1443 todo - 263 cancelled
+
+$ tmda status --limit 3 services/    # a few files; rollup still covers all
+showing 3 of 157 file(s) - narrow the PATH or raise --limit
+
+$ tmda list --open --limit 20 services/billing/
+showing 20 of 144 task(s) - narrow the PATH or raise --limit
+```
+
+Task ids (`T-004`) are unique within one file, not across the project, so
+`list --id` and `mark` both refuse when an id matches several files rather
+than return a plausible-looking wrong row. Narrow the path to one ledger.
+`status` also stays a report rather than a validator: it exits `0` for a file
+`check` rejects, but it names it as *stale* and gives the `tmda sync` remedy.
 
 ## Use it in your CI
 

@@ -72,6 +72,14 @@ def run(argv) -> tuple:
     return code, out.getvalue()
 
 
+def run_all(argv) -> tuple:
+    """Like run(), but also returns stderr (for refusal messages)."""
+    out, err = io.StringIO(), io.StringIO()
+    with redirect_stdout(out), redirect_stderr(err):
+        code = tmda.main(argv)
+    return code, out.getvalue(), err.getvalue()
+
+
 class TempCase(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory(prefix="tmda-test-")
@@ -697,6 +705,127 @@ class TestCli(TempCase):
             self.skipTest("examples/ not present")
         code, out = run(["check", str(examples)])
         self.assertEqual(code, 0, out)
+
+    # -- large-repo ergonomics ------------------------------------------
+
+    def test_list_limit_reports_truncation(self):
+        p = scaffold(self.root,
+                     "- [ ] T-001 A\n- [ ] T-002 B\n- [ ] T-003 C\n")
+        code, out = run(["list", "--limit", "1", str(p)])
+        self.assertEqual(code, 0)
+        self.assertIn("showing 1 of 3", out)
+        self.assertIn("T-001", out)
+        self.assertNotIn("T-002", out)
+
+        code, out = run(["list", "--limit", "1", "--json", str(p)])
+        payload = json.loads(out)
+        self.assertEqual(payload["count"], 3)      # total matches
+        self.assertEqual(payload["shown"], 1)      # what is in tasks[]
+        self.assertEqual(len(payload["tasks"]), 1)
+
+        # unlimited output carries no caveat
+        code, out = run(["list", str(p)])
+        self.assertEqual(code, 0)
+        self.assertNotIn("showing", out)
+
+    def test_list_refuses_ambiguous_id(self):
+        d2 = self.root / "sub"
+        d2.mkdir()
+        p1 = scaffold(self.root, "- [ ] T-001 A\n")
+        scaffold(d2, "- [ ] T-001 B\n")
+        # ids are file-scoped: refusing beats guessing which T-001
+        code, _, err = run_all(["list", "--id", "T-001", str(self.root)])
+        self.assertEqual(code, 2)
+        self.assertIn("scoped", err)
+        self.assertIn("--id T-001", err)
+        # scoping to one file answers it
+        code, out = run(["list", "--id", "T-001", str(p1)])
+        self.assertEqual(code, 0)
+        self.assertIn(" A", out)
+
+    def test_status_totals_only(self):
+        p = scaffold(self.root, "- [ ] T-001 A\n- [ ] T-002 B\n")
+        code, out = run(["status", "--totals-only", str(p)])
+        self.assertEqual(code, 0)
+        self.assertIn("TOTAL", out)
+        self.assertNotIn(str(p), out)          # no per-file block
+
+        # a single file on its own still gets a block and no rollup
+        code, out = run(["status", str(p)])
+        self.assertEqual(code, 0)
+        self.assertIn(str(p), out)
+        self.assertNotIn("TOTAL", out)
+
+    def test_status_limit_scopes_output(self):
+        for i in range(3):
+            d = self.root / f"d{i}"
+            d.mkdir()
+            scaffold(d, "- [ ] T-001 A\n")
+        code, out = run(["status", "--limit", "1", str(self.root)])
+        self.assertEqual(code, 0)
+        self.assertIn("showing 1 of 3", out)
+        self.assertIn("demo.tmda", out)
+        self.assertNotIn(str(self.root / "d1" / "demo.tmda"), out)
+        self.assertNotIn(str(self.root / "d2" / "demo.tmda"), out)
+        # the rollup still covers every file, not just the ones shown
+        self.assertIn("TOTAL", out)
+
+    def test_limit_rejects_negative(self):
+        p = scaffold(self.root, "- [ ] T-001 A\n")
+        for cmd in ("status", "list"):
+            code, _, err = run_all([cmd, "--limit", "-1", str(p)])
+            self.assertEqual(code, 2, f"{cmd} should reject a negative limit")
+            self.assertIn("--limit", err)
+
+    def test_status_json_limit_caps_files_not_totals(self):
+        for i in range(3):
+            d = self.root / f"d{i}"
+            d.mkdir()
+            scaffold(d, "- [ ] T-001 A\n")
+        code, out = run(["status", "--json", "--limit", "1", str(self.root)])
+        self.assertEqual(code, 0)
+        payload = json.loads(out)
+        self.assertEqual(payload["count"], 3)
+        self.assertEqual(payload["shown"], 1)
+        self.assertEqual(len(payload["files"]), 1)
+        # the aggregates still cover every file, not just the sample
+        self.assertEqual(payload["totals"]["tasks"]["live"], 3)
+
+    def test_status_flags_stale_progress(self):
+        p = scaffold(self.root, "- [ ] T-001 A\n- [ ] T-002 B\n")
+        self.assertEqual(run(["sync", str(p)])[0], 0)
+        # the agent edits the checkbox without going through `mark`
+        write(p, p.read_text().replace("- [ ] T-001", "- [x] T-001"))
+
+        code, out = run(["status", str(p)])
+        self.assertEqual(code, 0, out)             # status stays a report
+        self.assertIn("stale progress", out)
+        self.assertIn("tmda sync", out)
+
+        code, out = run(["status", "--json", str(p)])
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(out)["stale"], 1)
+
+        # and the CI gate still refuses it
+        code, out = run(["check", str(p)])
+        self.assertEqual(code, 1)
+        self.assertIn("E040", out)
+
+    def test_status_explains_the_blocked_glyph(self):
+        p = scaffold(self.root, "- [ ] T-001 A\n- [!] T-002 B\n")
+        code, out = run(["status", str(p)])
+        self.assertEqual(code, 0)
+        line = next(ln for ln in out.splitlines()
+                    if ln.startswith("  status"))
+        self.assertIn("1 blocked", line)
+
+        d2 = self.root / "clean"
+        d2.mkdir()
+        p2 = scaffold(d2, "- [x] T-001 A\n")
+        code, out = run(["status", str(p2)])
+        line = next(ln for ln in out.splitlines()
+                    if ln.startswith("  status"))
+        self.assertNotIn("blocked", line)
 
 
 class TestDiscover(TempCase):

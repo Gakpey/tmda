@@ -1385,6 +1385,10 @@ def _print_file_status(rep: FileReport, show_tasks=True) -> None:
     status_txt = rep.status
     if rep.authored_status and rep.authored_status != rep.status:
         status_txt += f" (front matter says {rep.authored_status})"
+    # The glyph alone reads as "broken file"; say what it means in words.
+    n_blocked = len(rep.blocked())
+    if n_blocked:
+        status_txt += f", {n_blocked} blocked"
     print(f"  status   {status_symbol(rep.progress)} {status_txt}")
 
     bar = fmt_bar(rep.progress)
@@ -1426,27 +1430,54 @@ def _print_file_status(rep: FileReport, show_tasks=True) -> None:
     print()
 
 
+def _limit_error(args) -> bool:
+    """True and reports when --limit is unusable. Keeps main() returning
+    an int instead of raising, so callers and tests see exit code 2."""
+    n = getattr(args, "limit", None)
+    if n is not None and n < 0:
+        print(f"tmda: --limit must be >= 0 (got {n})", file=sys.stderr)
+        return True
+    return False
+
+
 def cmd_status(args) -> int:
+    if _limit_error(args):
+        return 2
     reports = _collect(args)
+    stale = [r for r in reports if r.stale_progress]
+
     if args.json:
         live = [r for r in reports if not r.archived]
         totals = progress_of(
             (t.derived, t.weight) for r in live for t in r.flat_tasks())
+        # --limit caps `files` but never the aggregates: totals, counts and
+        # stale cover every match, so a capped sample reads as a sample.
+        shown = reports if args.limit is None else reports[:args.limit]
         payload = {
             "spec": SPEC_VERSION,
-            "files": [report_to_json(r) for r in reports],
+            "count": len(reports),
+            "shown": len(shown),
+            "files": [report_to_json(r) for r in shown],
             "totals": totals,
             "totals_status": derived_status(totals),
             "errors": sum(r.error_count() for r in reports),
             "warnings": sum(r.warn_count() for r in reports),
+            "stale": len(stale),
         }
         print(json.dumps(payload, indent=2, ensure_ascii=False))
         return 0
 
-    for rep in reports:
-        _print_file_status(rep, show_tasks=not args.no_tasks)
+    shown = reports if args.limit is None else reports[:args.limit]
+    if len(shown) < len(reports):
+        print(dim(f"showing {len(shown)} of {len(reports)} file(s) - "
+                  "narrow the PATH or raise --limit"))
+        print()
+    if not args.totals_only:
+        for rep in shown:
+            _print_file_status(rep, show_tasks=not args.no_tasks)
+
     live = [r for r in reports if not r.archived]
-    if len(live) > 1:
+    if args.totals_only or len(live) > 1:
         totals = progress_of(
             (t.derived, t.weight) for r in live for t in r.flat_tasks())
         print(bold("TOTAL") + f"  {len(live)} file(s)")
@@ -1454,6 +1485,10 @@ def cmd_status(args) -> int:
         if bar:
             print(f"  progress `{bar}`  **{fmt_progress(totals)}**")
         print(f"           {fmt_counts(totals)}")
+
+    if stale:
+        print(yellow(f"  {len(stale)} file(s) show stale progress - "
+                     "run `tmda sync` (check reports this as E040)"))
     return 0
 
 
@@ -1476,6 +1511,8 @@ def cmd_sync(args) -> int:
 
 
 def cmd_list(args) -> int:
+    if _limit_error(args):
+        return 2
     reports = _collect(args)
     wanted = set()
     for s in args.state or []:
@@ -1503,10 +1540,26 @@ def cmd_list(args) -> int:
                 continue
             rows.append((rep, t))
 
+    # Task ids are unique within a file, not across a project. Returning
+    # several different rows for one id invites an agent to read the wrong
+    # one, so refuse the query the same way `mark` refuses the write.
+    if args.id:
+        files_with_id = {str(rep.path) for rep, _ in rows}
+        if len(files_with_id) > 1:
+            print(f"tmda: {args.id} appears in {len(files_with_id)} files; "
+                  "ids are scoped to one file. Narrow it with a PATH, e.g. "
+                  f"`tmda list --id {args.id} <dir>`", file=sys.stderr)
+            return 2
+
+    total = len(rows)
+    if args.limit is not None:
+        rows = rows[:args.limit]
+
     if args.json:
         payload = {
             "spec": SPEC_VERSION,
-            "count": len(rows),
+            "count": total,
+            "shown": len(rows),
             "tasks": [dict(t.to_json(rep.sections),
                            path=str(rep.path),
                            file_id=rep.id)
@@ -1515,6 +1568,11 @@ def cmd_list(args) -> int:
         print(json.dumps(payload, indent=2, ensure_ascii=False))
         return 0
 
+    # Printed before the rows: if the caller truncates our output, the
+    # caveat survives and it never looks like a complete answer.
+    if len(rows) < total:
+        print(dim(f"showing {len(rows)} of {total} task(s) - narrow the PATH "
+                  "or raise --limit"))
     if not rows:
         print("no tasks match")
         return 0
@@ -1649,6 +1707,10 @@ def build_parser() -> argparse.ArgumentParser:
     add_paths(sp)
     sp.add_argument("--no-tasks", action="store_true",
                     help="omit the blocked / next-up lists")
+    sp.add_argument("--totals-only", action="store_true",
+                    help="only the project rollup, no per-file blocks")
+    sp.add_argument("--limit", type=int, metavar="N",
+                    help="show at most N files (default: all)")
     sp.add_argument("--json", action="store_true", help="JSON report")
     sp.set_defaults(func=cmd_status)
 
@@ -1668,6 +1730,8 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--blocked", dest="blocked_only", action="store_true",
                     help="only blocked tasks")
     sp.add_argument("--id", help="filter by task id")
+    sp.add_argument("--limit", type=int, metavar="N",
+                    help="show at most N tasks (default: all)")
     sp.add_argument("--json", action="store_true", help="JSON output")
     sp.set_defaults(func=cmd_list)
 

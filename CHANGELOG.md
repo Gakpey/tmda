@@ -11,6 +11,30 @@ removing or repurposing a documented key is a major release.
 
 ## [Unreleased]
 
+### Added
+
+- `tmda status --totals-only` — project rollup with no per-file blocks, so
+  asking "where are we" on a large repository costs tokens proportional to the
+  answer rather than to the repository.
+- `--limit N` on `status` (files) and `list` (tasks). Truncated output is
+  headed `showing N of M …`, and `list --json` gains `shown` alongside `count`
+  so a capped answer can never be mistaken for a complete one.
+- `status --json` reports `stale`, the number of ledgers whose progress block
+  no longer matches their checkboxes.
+
+### Fixed
+
+- `status` now says when a ledger's progress block is out of date — including
+  the `tmda sync` remedy — instead of silently printing recomputed numbers for
+  a file that `check` rejects with `E040`. It still exits `0`; status is a
+  report, not a validation run.
+- `list --id` refused nothing: an id matched in several files returned every
+  match with exit `0`, so an agent could read the wrong `T-004` and never
+  notice. It now refuses with exit `2` and a scoping hint, the way `mark`
+  already refused the write.
+- The status line's `✖` meant "has blocked tasks", which reads as "file is
+  broken". It now spells the count out (`✖ active, 9 blocked`).
+
 ## [1.0.0] - 2026-10-22
 
 First release. Format spec version `1`.

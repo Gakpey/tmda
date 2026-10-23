@@ -530,9 +530,9 @@ Reference implementation: `tmda.py`, Python ≥ 3.9, standard library only
 |---|---|
 | `tmda init NAME [--title --id --detail --owner --section --no-brief --force]` | Scaffold a ledger plus its brief stub, then insert a correct progress region |
 | `tmda check [PATH…] [--strict] [--json]` | Validate. Exit `1` on errors (`--strict`: also warnings) |
-| `tmda status [PATH…] [--no-tasks] [--json]` | Human-readable progress report, or the machine report |
+| `tmda status [PATH…] [--no-tasks --totals-only --limit N --json]` | Human-readable progress report, or the machine report |
 | `tmda sync [PATH…] [-v]` | Rewrite the progress region in place. Idempotent |
-| `tmda list [PATH…] [--state --open --owner --blocked --id --json]` | Flat, filterable task list |
+| `tmda list [PATH…] [--state --open --owner --blocked --id --limit N --json]` | Flat, filterable task list |
 | `tmda mark TASK_ID STATE [PATH…] [--file --no-sync]` | Change a task's state by id and refresh progress |
 
 `PATH` accepts files or directories; directories are searched recursively for
@@ -540,6 +540,23 @@ Reference implementation: `tmda.py`, Python ≥ 3.9, standard library only
 
 `STATE` accepts `todo`, `in-progress`, `done`, `blocked`, `cancelled` and the
 usual aliases (`wip`, `doing`, `complete`, `canceled`, `skip`, …).
+
+`--limit N` caps how many files (`status`) or tasks (`list`) are printed, and
+prints a `showing N of M` header when it truncates. It is a display cap only:
+counts, JSON totals and the project rollup still cover every match, so a
+limited run can never read as a complete answer that happens to be short.
+`status --totals-only` skips the per-file blocks entirely and prints just the
+project rollup — the cheap way to ask "where are we" on a large repository.
+
+Task ids are unique **within one file**, not across a project. Both `mark` and
+`list --id` therefore refuse (exit `2`) when an id matches more than one file,
+rather than return a plausible-looking wrong row; narrow with `PATH` or
+`--file`.
+
+`status` is a report, not a validation run: it exits `0` even for a ledger
+`check` rejects, but it always says so — a file whose progress block no longer
+matches its checkboxes is called out as *stale* with the `tmda sync` remedy,
+and `status --json` counts those files in `stale`.
 
 ### 14.2 Exit codes
 
@@ -601,13 +618,23 @@ usual aliases (`wip`, `doing`, `complete`, `canceled`, `skip`, …).
   "errors": 0,
   "warnings": 0,
   // status only:
+  "count": 157,                // files matched, before --limit
+  "shown": 157,                // files present in `files` after --limit
   "totals": { /* progress shape, aggregated over non-archived files */ },
-  "totals_status": "active"
+  "totals_status": "active",
+  "stale": 0                   // files whose progress block is out of date (E040)
 }
 ```
 
-`list --json` emits `{ "spec": 1, "count": n, "tasks": [ …task objects with
-"path" and "file_id" added… ] }`.
+`--limit` truncates `files` only. `count` against `shown` makes that visible,
+and `totals`, `totals_status`, `errors`, `warnings` and `stale` keep covering
+every match — so summing `files[].errors` equals the top-level `errors` only
+when nothing was capped.
+
+`list --json` emits `{ "spec": 1, "count": n, "shown": n, "tasks": [ …task
+objects with "path" and "file_id" added… ] }`. `count` is how many tasks
+matched the filters, `shown` is how many are in `tasks` after `--limit`, and
+`tasks` never exceeds `shown`.
 
 **Stability:** `spec`, the `progress` shape, `tasks[].id`, `tasks[].state`,
 `next`, `blocked`, `errors` and `warnings` are the contract agents should
@@ -618,11 +645,21 @@ change meaning.
 
 1. `tmda status --json <project>` — get derived status, progress, `blocked`,
    `next` for every ledger.
+
+   **Scope before you read.** The full report is every ledger's every task: on
+   a mid-sized monorepo that is tens of thousands of tokens (and `status
+   --json` runs to megabytes), which no agent should spend on a question about
+   one service. Use `status --json --totals-only` for the project rollup, or
+   `status --json <dir>` for the part you own; `--limit N` caps it, and
+   `list --json` reports `count` against `shown` so a capped answer can never
+   be mistaken for a complete one.
 2. Read the `detail` file for any ledger it is about to touch. The checkboxes
    say *what*; the brief says *why*, and *why* decides how to do the work.
 3. Pick from `next` (already filtered for unmet `@blocked-by`).
 4. Do the work, then `tmda mark T-014 done` — never hand-edit a checkbox if
-   the id can be given instead, and never hand-edit the progress block.
+   the id can be given instead, and never hand-edit the progress block. If
+   `status` reports the file as *stale*, the block was edited anyway: `tmda
+   sync` repairs it, `check` would have refused it.
 5. `tmda check` before handing back. Exit `0` means the ledgers are
    self-consistent and the numbers can be trusted.
 
